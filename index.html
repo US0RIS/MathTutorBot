@@ -27,6 +27,8 @@
     .error { color: #b91c1c; }
     .tiny { color: var(--muted); font-size: 12px; }
   </style>
+  <!-- Markdown renderer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -59,7 +61,7 @@
     const resetBtn= document.getElementById('resetBtn');
     const debugEl = document.getElementById('debug');
 
-    // Short-term memory (persists in this browser via localStorage)
+    // Short-term memory in localStorage
     let chatHistory = JSON.parse(localStorage.getItem("tutor_history") || "[]");
 
     function renderHistory() {
@@ -73,7 +75,7 @@
     renderHistory();
 
     function saveHistory() {
-      chatHistory = chatHistory.slice(-12); // cap context
+      chatHistory = chatHistory.slice(-12);
       localStorage.setItem("tutor_history", JSON.stringify(chatHistory));
       debugEl.textContent = `(context turns available: ${chatHistory.length})`;
     }
@@ -84,13 +86,25 @@
       renderHistory();
     }
 
+    // Strip [OUT] prefix
+    function cleanReply(text) {
+      if (!text) return "";
+      return text.replace(/^\[OUT\]\s*/i, "").trim();
+    }
+
     function append(labelClass, labelText, text, extraClass="") {
-      const p = document.createElement('p');
-      p.className = `msg ${extraClass}`;
-      p.innerHTML = `<span class="${labelClass}">${labelText}:</span> ${escapeHtml(text)}`;
-      chat.appendChild(p);
+      const div = document.createElement('div');
+      div.className = `msg ${extraClass}`;
+      if (labelText === "TutorBot") {
+        const safe = cleanReply(text);
+        div.innerHTML = `<span class="${labelClass}">${labelText}:</span> ${marked.parse(safe)}`;
+      } else {
+        div.innerHTML = `<span class="${labelClass}">${labelText}:</span> ${escapeHtml(text)}`;
+      }
+      chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
+
     function appendRaw(html, extraClass="") {
       const div = document.createElement('div');
       div.className = `msg ${extraClass}`;
@@ -98,6 +112,7 @@
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
+
     function escapeHtml(s) {
       return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
@@ -116,38 +131,31 @@
       const message = input.value.trim();
       if (!message) return;
 
-      // Show user turn (but do NOT push it to history yet)
       append('u', 'You', message);
-
       input.value = "";
       sendBtn.disabled = true;
       const typingId = `typing-${Date.now()}`;
       appendRaw(`<span id="${typingId}" class="typing">TutorBot is thinking…</span>`);
 
       try {
-        // Send existing history + current user message separately
         const r = await fetch(BACKEND_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message,
-            history: chatHistory   // previous turns only
-          })
+          body: JSON.stringify({ message, history: chatHistory })
         });
 
         const raw = await r.text();
         let data = null;
         try { data = JSON.parse(raw); } catch {}
 
-        // remove typing
         const t = document.getElementById(typingId);
         if (t) t.remove();
 
         if (r.ok && data && data.reply) {
-          append('b', 'TutorBot', data.reply);
-          // Now append both turns into history in correct order
+          const reply = cleanReply(data.reply);
+          append('b', 'TutorBot', reply);
           chatHistory.push({ role: "user", content: message });
-          chatHistory.push({ role: "assistant", content: data.reply });
+          chatHistory.push({ role: "assistant", content: reply });
           saveHistory();
         } else {
           const msg = friendlyError(r.status, (data && (data.error || data.detail)) || raw);
