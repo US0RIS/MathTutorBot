@@ -13,6 +13,13 @@
     .btns { display:flex; gap:8px; }
     .bar button { padding:8px 12px; border:1px solid #d1d5db; border-radius:10px; background:#fff; cursor:pointer; }
     .card { background: var(--card); border:1px solid #e5e7eb; border-radius: 14px; padding: 18px; }
+
+    #gate { background: var(--card); border:1px solid #e5e7eb; border-radius: 14px; padding: 18px; margin-bottom:16px; }
+    #gate .row { display:flex; gap:8px; margin-top: 8px; }
+    #gate input { flex: 1; padding: 10px 12px; border:1px solid #d1d5db; border-radius: 10px; font-size: 16px; outline: none; }
+    #gate button { padding:10px 12px; border-radius:10px; border:1px solid #d1d5db; background:#fff; cursor:pointer; }
+    #gate .note { color: var(--muted); font-size: 14px; }
+
     #chat { min-height: 340px; max-height: 60vh; overflow:auto; line-height:1.6; }
     .msg { margin: 10px 0; }
     .u  { color: var(--accent); font-weight: 600; }
@@ -28,11 +35,10 @@
     .error { color: #b91c1c; }
     .tiny { color: var(--muted); font-size: 12px; }
 
-    /* Hard-kill strikethrough from any source */
+    /* Kill any strikethrough coming from models */
     del, s, strike { text-decoration: none !important; }
     [style*="line-through"] { text-decoration: none !important; }
   </style>
-  <!-- Markdown renderer -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
@@ -40,31 +46,52 @@
     <div class="bar">
       <h1>8th Grade Math Helper 🤖</h1>
       <div class="btns">
-        <button id="resetBtn" title="Start over (keeps saved history)">Reset</button>
-        <button id="clearBtn" title="Clear saved chat history on this device">Clear history</button>
+        <button id="resetBtn">Reset</button>
+        <button id="clearBtn">Clear history</button>
       </div>
+    </div>
+
+    <!-- 🔒 Unlock Gate -->
+    <div id="gate">
+      <strong>🔒 Restricted area</strong>
+      <div class="note">
+        Enter access code to unlock <em>Answer mode</em> (gives final answers). Leave locked for steps-only mode.
+      </div>
+      <div class="row">
+        <input id="codeInput" type="password" placeholder="Enter access code…" autocomplete="off" />
+        <button id="unlockBtn">Unlock</button>
+        <button id="lockBtn">Lock</button>
+      </div>
+      <div id="gateMsg" class="note"></div>
     </div>
 
     <div class="card">
       <div id="chat">
-        <div class="msg system">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer.</div>
+        <div class="msg system">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer unless unlocked.</div>
       </div>
 
       <div class="row">
         <input id="userInput" type="text" placeholder="Ask a math question… (press Enter)" autocomplete="off" />
         <button id="sendBtn" class="send">Send</button>
       </div>
-      <div class="hint">The bot explains steps and encourages thinking — no final answers.</div>
+      <div class="hint">The bot explains steps and encourages thinking — no final answers unless unlocked.</div>
       <div id="debug" class="tiny"></div>
     </div>
   </div>
 
   <script>
-    // 🔧 Set this to your Replit backend '/ask' URL:
-    const BACKEND_URL = "https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask";
+    // 🔧 Set your backend /ask URL
+    const BACKEND_URL = "https://YOUR-REPLIT-URL/ask";
 
-    // Bump this to nuke old localStorage after a deploy
-    const STORAGE_KEY = "tutor_history_v4";
+    // 🔑 Change this!
+    const SECRET_CODE = "unlock123";
+
+    // Persist unlock state in sessionStorage (clears on tab close)
+    const UNLOCK_KEY = "tutor_unlock_v1";
+    let unlocked = sessionStorage.getItem(UNLOCK_KEY) === "true";
+
+    // History in localStorage
+    const STORAGE_KEY = "tutor_history_v5";
 
     const chat    = document.getElementById('chat');
     const input   = document.getElementById('userInput');
@@ -73,86 +100,107 @@
     const clearBtn= document.getElementById('clearBtn');
     const debugEl = document.getElementById('debug');
 
+    const codeInput = document.getElementById('codeInput');
+    const unlockBtn = document.getElementById('unlockBtn');
+    const lockBtn   = document.getElementById('lockBtn');
+    const gateMsg   = document.getElementById('gateMsg');
+
+    // UI gate status
+    function refreshGateUI() {
+      gateMsg.textContent = unlocked
+        ? "✅ Answer mode is unlocked for this tab."
+        : "🔒 Steps-only mode. Enter code to unlock answers.";
+    }
+    refreshGateUI();
+
+    // Unlock / lock handlers
+    unlockBtn.onclick = () => {
+      const entered = (codeInput.value || "").trim();
+      if (entered === SECRET_CODE) {
+        unlocked = true;
+        sessionStorage.setItem(UNLOCK_KEY, "true");
+        refreshGateUI();
+        append('b', 'TutorBot', "Answer mode unlocked for this tab. I can include final numeric answers now.");
+      } else {
+        gateMsg.textContent = "❌ Wrong code.";
+      }
+      codeInput.value = "";
+    };
+
+    lockBtn.onclick = () => {
+      unlocked = false;
+      sessionStorage.removeItem(UNLOCK_KEY);
+      refreshGateUI();
+      append('b', 'TutorBot', "Locked back to steps-only mode. I won’t give final answers.");
+    };
+
+    // -------- History --------
     let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
 
     function renderHistory() {
-      chat.innerHTML = `<div class="msg system">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer.</div>`;
+      chat.innerHTML = `<div class="msg system">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer unless unlocked.</div>`;
       for (const m of chatHistory) {
         if (m.role === "user") append("u", "You", m.content);
         if (m.role === "assistant") append("b", "TutorBot", m.content);
       }
-      debugEl.textContent = `(context turns available: ${chatHistory.length})`;
+      debugEl.textContent = `(context turns stored: ${chatHistory.length}) • Mode: ${unlocked ? "answers" : "steps"}`;
     }
     renderHistory();
 
     function saveHistory() {
       chatHistory = chatHistory.slice(-12);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(chatHistory));
-      debugEl.textContent = `(context turns available: ${chatHistory.length})`;
+      debugEl.textContent = `(context turns stored: ${chatHistory.length}) • Mode: ${unlocked ? "answers" : "steps"}`;
     }
 
-    function resetHistoryViewOnly() {
-      renderHistory(); // keep saved history, just re-render
-    }
-
-    function clearSavedHistory() {
+    resetBtn.addEventListener('click', renderHistory);
+    clearBtn.addEventListener('click', () => {
       chatHistory = [];
       localStorage.removeItem(STORAGE_KEY);
       renderHistory();
-    }
+    });
 
-    // Clean raw text before markdown:
-    // - remove [OUT] anywhere
-    // - collapse ~~strike~~ to plain text
+    // -------- Cleaning helpers (nuke [OUT] and strikethrough) --------
     function preClean(text) {
       if (!text) return "";
-      return text
-        .replace(/\[\s*OUT\s*]/gi, "")      // all [OUT] tokens
-        .replace(/~~([^~]+)~~/g, "$1")      // remove ~~strike~~ markdown
-        .trim();
+      let t = text.normalize("NFKC").replace(/[\u200B-\u200D\uFEFF]/g, "");
+      t = t
+        .replace(/\[\s*OUT\s*]/gi, "")
+        .replace(/&#91;\s*OUT\s*&#93;/gi, "")
+        .replace(/\[\s*O\s*U\s*T\s*]/gi, "")
+        .replace(/~~([^~]+)~~/g, "$1");
+      return t.trim();
     }
 
-    // Render markdown to HTML, then sanitize DOM:
-    // - unwrap <del>/<s>/<strike>
-    // - remove inline line-through styles
-    // - remove lingering [OUT] from text nodes
     function renderMarkdownSafe(text) {
       const html = marked.parse(preClean(text));
       const tmp = document.createElement("div");
       tmp.innerHTML = html;
 
-      const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null);
-      const toUnwrap = [];
-
+      const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+      const unwrap = [];
       while (walker.nextNode()) {
         const node = walker.currentNode;
-
         if (node.nodeType === Node.TEXT_NODE) {
-          node.nodeValue = node.nodeValue.replace(/\[\s*OUT\s*]/gi, "");
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          node.nodeValue = node.nodeValue
+            .replace(/\[\s*OUT\s*]/gi, "")
+            .replace(/&#91;\s*OUT\s*&#93;/gi, "");
+        } else {
           const el = node;
           const tag = el.tagName.toLowerCase();
-          if (tag === "del" || tag === "s" || tag === "strike") {
-            toUnwrap.push(el);
-          }
-          const ds = (el.style && el.style.textDecoration || "").toLowerCase();
-          if (ds.includes("line-through")) {
-            el.style.textDecoration = "none";
-          }
-          // also catch inline attributes that include line-through (rare)
-          const styleAttr = (el.getAttribute && (el.getAttribute("style") || "").toLowerCase()) || "";
-          if (styleAttr.includes("line-through")) {
-            el.setAttribute("style", styleAttr.replace(/text-decoration\s*:\s*line-through;?/g, "text-decoration:none;"));
+          if (tag === "s" || tag === "strike" || tag === "del") unwrap.push(el);
+          const s1 = (el.style && el.style.textDecoration || "").toLowerCase();
+          if (s1.includes("line-through")) el.style.textDecoration = "none";
+          const sAttr = (el.getAttribute("style") || "").toLowerCase();
+          if (sAttr.includes("line-through")) {
+            el.setAttribute("style", sAttr.replace(/text-decoration\s*:\s*line-through;?/g, "text-decoration:none;"));
           }
         }
       }
-
-      // unwrap after walk to avoid messing with the iterator
-      for (const el of toUnwrap) {
+      for (const el of unwrap) {
         while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
         el.parentNode.removeChild(el);
       }
-
       return tmp.innerHTML;
     }
 
@@ -167,7 +215,6 @@
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
-
     function appendRaw(html, extraClass="") {
       const div = document.createElement('div');
       div.className = `msg ${extraClass}`;
@@ -175,21 +222,21 @@
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
-
     function escapeHtml(s) {
       return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
     function friendlyError(status, bodyText) {
       const t = (bodyText || "").toLowerCase();
-      if (status === 503 || t.includes("busy")) return "All free providers are busy right now. Please try again in a minute.";
-      if (status === 429 || t.includes("rate limit")) return "The free service is temporarily rate-limited. Try again in a few seconds.";
+      if (status === 503 || t.includes("busy")) return "All free providers are busy right now. Try again in a minute.";
+      if (status === 429 || t.includes("rate limit")) return "The free service is temporarily rate-limited. Try again shortly.";
       if (status === 404 && (t.includes("no endpoints") || t.includes("free model")))
         return "That free model isn’t available right now — trying other options.";
       if (t.includes("not allowed by cors")) return "This page isn’t allowed to reach the tutor server (CORS). Tell the site owner.";
       return "Server error. Please try again soon.";
     }
 
+    // -------- Chat send --------
     async function send() {
       const message = input.value.trim();
       if (!message) return;
@@ -204,7 +251,11 @@
         const r = await fetch(BACKEND_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, history: chatHistory })
+          body: JSON.stringify({
+            message,
+            history: chatHistory,
+            mode: unlocked ? "answers" : "steps"
+          })
         });
 
         const raw = await r.text();
@@ -217,8 +268,12 @@
         if (r.ok && data && data.reply) {
           const reply = data.reply || "";
           append('b', 'TutorBot', reply);
+          // store a plain-text version for memory
+          const tmp = document.createElement("div");
+          tmp.innerHTML = marked.parse(preClean(reply));
+          const memText = tmp.textContent || tmp.innerText || "";
           chatHistory.push({ role: "user", content: message });
-          chatHistory.push({ role: "assistant", content: renderTextForMemory(reply) });
+          chatHistory.push({ role: "assistant", content: memText });
           saveHistory();
         } else {
           const msg = friendlyError(r.status, (data && (data.error || data.detail)) || raw);
@@ -235,21 +290,14 @@
       }
     }
 
-    // For memory, keep a plain-text (no tags) version:
-    function renderTextForMemory(text) {
-      const stripped = preClean(text);
-      const tmp = document.createElement("div");
-      tmp.innerHTML = marked.parse(stripped);
-      return tmp.textContent || tmp.innerText || "";
-    }
-
     sendBtn.addEventListener('click', send);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
-    resetBtn.addEventListener('click', resetHistoryViewOnly);
-    clearBtn.addEventListener('click', clearSavedHistory);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
 
+    // Optional one-time clear via hash
     if (location.hash === "#clear") {
-      clearSavedHistory();
+      chatHistory = [];
+      localStorage.removeItem(STORAGE_KEY);
+      renderHistory();
       history.replaceState(null, "", location.pathname);
     }
   </script>
