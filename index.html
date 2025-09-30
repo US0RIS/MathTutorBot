@@ -35,7 +35,7 @@
       </div>
 
       <div class="row">
-        <input id="userInput" type="text" placeholder="Ask a math question… (press Enter)" autocomplete="off" />
+        <input id="userInput" type="text" placeholder="Ask a math question… (press Enter)" autocomplete="on" />
         <button id="sendBtn">Send</button>
       </div>
       <div class="hint">The bot explains steps and encourages thinking — no final answers.</div>
@@ -44,7 +44,7 @@
 
   <script>
     // 🔧 Set this to your Replit backend '/ask' URL:
-    const BACKEND_URL = "https://YOUR-REPLIT-URL-HERE/ask";
+    const BACKEND_URL = "https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask";
 
     const chat   = document.getElementById('chat');
     const input  = document.getElementById('userInput');
@@ -68,21 +68,22 @@
       return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
+    // Clear, student-friendly error mapping
     function friendlyError(status, bodyText) {
       const t = (bodyText || "").toLowerCase();
       if (status === 503 || t.includes("busy")) {
         return "All free providers are busy right now. Please try again in a minute.";
       }
       if (status === 429 || t.includes("rate limit")) {
-        return "The free service hit a limit briefly. Try again in a few seconds.";
+        return "The free service is temporarily rate-limited. Try again in a few seconds.";
       }
-      if (status === 404 && (t.includes("data policy") || t.includes("free model publication"))) {
-        return "Account privacy settings are blocking free endpoints. (Owner needs to allow free endpoints in OpenRouter settings.)";
+      if (status === 404 && (t.includes("no endpoints") || t.includes("free model"))) {
+        return "That free model isn’t available right now — trying other options.";
       }
       if (t.includes("not allowed by cors")) {
-        return "This page’s origin isn’t allowed to reach the tutor server (CORS).";
+        return "This page isn’t allowed to reach the tutor server (CORS). Tell the site owner.";
       }
-      return "Server error. Try again in a moment.";
+      return "Server error. Please try again soon.";
     }
 
     async function send() {
@@ -111,7 +112,7 @@
         if (t) t.remove();
 
         if (r.ok && data && data.reply) {
-          // ✅ show only the reply (do NOT display the model)
+          // ✅ only the reply — no model names
           append('b', 'TutorBot', data.reply);
         } else {
           const msg = friendlyError(r.status, (data && (data.error || data.detail)) || raw);
@@ -120,7 +121,8 @@
       } catch (err) {
         const t = document.getElementById(typingId);
         if (t) t.remove();
-        append('b', 'TutorBot', "⚠️ Network error. Check your connection and try again.", 'error');
+        // Fall back message (rare: network truly down from the browser)
+        append('b', 'TutorBot', "⚠️ Couldn’t reach the tutor server. Check your connection and try again.", 'error');
         console.error(err);
       } finally {
         sendBtn.disabled = false;
