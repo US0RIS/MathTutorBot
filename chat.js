@@ -9,7 +9,7 @@ async function sendMessage() {
   userInput.value = "";
 
   try {
-    const response = await fetch("https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/", {
+    const response = await fetch("https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
