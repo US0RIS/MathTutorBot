@@ -9,6 +9,8 @@
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
     .wrap { max-width: 900px; margin: 36px auto; padding: 0 16px; }
     h1 { font-size: clamp(24px, 4vw, 32px); margin: 0 0 16px; display:flex; align-items:center; gap:10px;}
+    .bar { display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; }
+    .bar button { padding:8px 12px; border:1px solid #d1d5db; border-radius:10px; background:#fff; cursor:pointer; }
     .card { background: var(--card); border:1px solid #e5e7eb; border-radius: 14px; padding: 18px; }
     #chat { min-height: 340px; max-height: 60vh; overflow:auto; line-height:1.6; }
     .msg { margin: 10px 0; }
@@ -18,8 +20,8 @@
     .row { display: flex; gap: 8px; margin-top: 12px; }
     input[type="text"] { flex: 1; padding: 12px 14px; border:1px solid #d1d5db; border-radius: 10px; font-size: 16px; outline: none; }
     input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
-    button { padding: 12px 16px; border: none; border-radius: 10px; background: var(--primary); color: white; font-size: 16px; cursor: pointer; }
-    button[disabled] { opacity:.7; cursor: not-allowed; }
+    button.send { padding: 12px 16px; border: none; border-radius: 10px; background: var(--primary); color: white; font-size: 16px; cursor: pointer; }
+    button.send[disabled] { opacity:.7; cursor: not-allowed; }
     .hint { color: var(--muted); font-size: 14px; margin-top: 8px; }
     .typing { color: var(--muted); font-style: italic; }
     .error { color: #b91c1c; }
@@ -27,7 +29,10 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>8th Grade Math Helper 🤖</h1>
+    <div class="bar">
+      <h1>8th Grade Math Helper 🤖</h1>
+      <button id="resetBtn" title="Start over">Reset</button>
+    </div>
 
     <div class="card">
       <div id="chat">
@@ -35,8 +40,8 @@
       </div>
 
       <div class="row">
-        <input id="userInput" type="text" placeholder="Ask a math question… (press Enter)" autocomplete="on" />
-        <button id="sendBtn">Send</button>
+        <input id="userInput" type="text" placeholder="Ask a math question… (press Enter)" autocomplete="off" />
+        <button id="sendBtn" class="send">Send</button>
       </div>
       <div class="hint">The bot explains steps and encourages thinking — no final answers.</div>
     </div>
@@ -44,11 +49,36 @@
 
   <script>
     // 🔧 Set this to your Replit backend '/ask' URL:
-    const BACKEND_URL = "https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask";
+    const BACKEND_URL = "https://https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask";
 
-    const chat   = document.getElementById('chat');
-    const input  = document.getElementById('userInput');
-    const sendBtn= document.getElementById('sendBtn');
+    const chat    = document.getElementById('chat');
+    const input   = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const resetBtn= document.getElementById('resetBtn');
+
+    // Keep short-term memory in the browser (and persist across refresh)
+    let chatHistory = JSON.parse(localStorage.getItem("tutor_history") || "[]");
+
+    // Re-render any saved messages
+    function renderHistory() {
+      for (const m of chatHistory) {
+        if (m.role === "user") append("u", "You", m.content);
+        if (m.role === "assistant") append("b", "TutorBot", m.content);
+      }
+    }
+    renderHistory();
+
+    function saveHistory() {
+      // cap to ~12 turns to keep payload small
+      const capped = chatHistory.slice(-12);
+      localStorage.setItem("tutor_history", JSON.stringify(capped));
+    }
+
+    function resetHistory() {
+      chatHistory = [];
+      localStorage.removeItem("tutor_history");
+      chat.innerHTML = `<div class="msg system">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer.</div>`;
+    }
 
     function append(labelClass, labelText, text, extraClass="") {
       const p = document.createElement('p');
@@ -68,7 +98,6 @@
       return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
-    // Clear, student-friendly error mapping
     function friendlyError(status, bodyText) {
       const t = (bodyText || "").toLowerCase();
       if (status === 503 || t.includes("busy")) {
@@ -90,17 +119,25 @@
       const message = input.value.trim();
       if (!message) return;
 
+      // Show + record user turn
       append('u', 'You', message);
+      chatHistory.push({ role: "user", content: message });
+      saveHistory();
+
       input.value = "";
       sendBtn.disabled = true;
       const typingId = `typing-${Date.now()}`;
       appendRaw(`<span id="${typingId}" class="typing">TutorBot is thinking…</span>`);
 
       try {
+        // Send message + prior turns
         const r = await fetch(BACKEND_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message })
+          body: JSON.stringify({
+            message,
+            history: chatHistory.slice(0, -1) // previous turns only; backend adds current user
+          })
         });
 
         const raw = await r.text();
@@ -112,8 +149,10 @@
         if (t) t.remove();
 
         if (r.ok && data && data.reply) {
-          // ✅ only the reply — no model names
+          // Show + record assistant turn (hide model)
           append('b', 'TutorBot', data.reply);
+          chatHistory.push({ role: "assistant", content: data.reply });
+          saveHistory();
         } else {
           const msg = friendlyError(r.status, (data && (data.error || data.detail)) || raw);
           append('b', 'TutorBot', `⚠️ ${msg}`, 'error');
@@ -121,7 +160,6 @@
       } catch (err) {
         const t = document.getElementById(typingId);
         if (t) t.remove();
-        // Fall back message (rare: network truly down from the browser)
         append('b', 'TutorBot', "⚠️ Couldn’t reach the tutor server. Check your connection and try again.", 'error');
         console.error(err);
       } finally {
@@ -131,9 +169,8 @@
     }
 
     sendBtn.addEventListener('click', send);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') send();
-    });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+    resetBtn.addEventListener('click', resetHistory);
   </script>
 </body>
 </html>
