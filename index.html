@@ -28,8 +28,9 @@
     .error { color: #b91c1c; }
     .tiny { color: var(--muted); font-size: 12px; }
 
-    /* 🚫 Disable strikethrough from model output */
+    /* Hard-kill strikethrough from any source */
     del, s, strike { text-decoration: none !important; }
+    [style*="line-through"] { text-decoration: none !important; }
   </style>
   <!-- Markdown renderer -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -39,7 +40,7 @@
     <div class="bar">
       <h1>8th Grade Math Helper 🤖</h1>
       <div class="btns">
-        <button id="resetBtn" title="Start over (keeps this tab’s history)">Reset</button>
+        <button id="resetBtn" title="Start over (keeps saved history)">Reset</button>
         <button id="clearBtn" title="Clear saved chat history on this device">Clear history</button>
       </div>
     </div>
@@ -62,8 +63,8 @@
     // 🔧 Set this to your Replit backend '/ask' URL:
     const BACKEND_URL = "https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask";
 
-    // 🔁 Bump this when you want to invalidate old stored chats after a deploy
-    const STORAGE_KEY = "tutor_history_v3";
+    // Bump this to nuke old localStorage after a deploy
+    const STORAGE_KEY = "tutor_history_v4";
 
     const chat    = document.getElementById('chat');
     const input   = document.getElementById('userInput');
@@ -72,7 +73,6 @@
     const clearBtn= document.getElementById('clearBtn');
     const debugEl = document.getElementById('debug');
 
-    // Short-term memory in localStorage
     let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
 
     function renderHistory() {
@@ -92,8 +92,7 @@
     }
 
     function resetHistoryViewOnly() {
-      // Just clears the on-screen messages (keeps saved history)
-      renderHistory();
+      renderHistory(); // keep saved history, just re-render
     }
 
     function clearSavedHistory() {
@@ -102,22 +101,66 @@
       renderHistory();
     }
 
-    // Strip unwanted artifacts and strikethrough markdown
-    function cleanReply(text) {
+    // Clean raw text before markdown:
+    // - remove [OUT] anywhere
+    // - collapse ~~strike~~ to plain text
+    function preClean(text) {
       if (!text) return "";
       return text
-        .replace(/^\s*\[OUT\]\s*/i, "")    // leading [OUT]
-        .replace(/\s*\[OUT\]\s*/gi, " ")   // any remaining [OUT] tokens
-        .replace(/~~([^~]+)~~/g, "$1")     // remove strikethrough markdown but keep content
+        .replace(/\[\s*OUT\s*]/gi, "")      // all [OUT] tokens
+        .replace(/~~([^~]+)~~/g, "$1")      // remove ~~strike~~ markdown
         .trim();
+    }
+
+    // Render markdown to HTML, then sanitize DOM:
+    // - unwrap <del>/<s>/<strike>
+    // - remove inline line-through styles
+    // - remove lingering [OUT] from text nodes
+    function renderMarkdownSafe(text) {
+      const html = marked.parse(preClean(text));
+      const tmp = document.createElement("div");
+      tmp.innerHTML = html;
+
+      const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, null);
+      const toUnwrap = [];
+
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+
+        if (node.nodeType === Node.TEXT_NODE) {
+          node.nodeValue = node.nodeValue.replace(/\[\s*OUT\s*]/gi, "");
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node;
+          const tag = el.tagName.toLowerCase();
+          if (tag === "del" || tag === "s" || tag === "strike") {
+            toUnwrap.push(el);
+          }
+          const ds = (el.style && el.style.textDecoration || "").toLowerCase();
+          if (ds.includes("line-through")) {
+            el.style.textDecoration = "none";
+          }
+          // also catch inline attributes that include line-through (rare)
+          const styleAttr = (el.getAttribute && (el.getAttribute("style") || "").toLowerCase()) || "";
+          if (styleAttr.includes("line-through")) {
+            el.setAttribute("style", styleAttr.replace(/text-decoration\s*:\s*line-through;?/g, "text-decoration:none;"));
+          }
+        }
+      }
+
+      // unwrap after walk to avoid messing with the iterator
+      for (const el of toUnwrap) {
+        while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+        el.parentNode.removeChild(el);
+      }
+
+      return tmp.innerHTML;
     }
 
     function append(labelClass, labelText, text, extraClass="") {
       const div = document.createElement('div');
       div.className = `msg ${extraClass}`;
       if (labelText === "TutorBot") {
-        const safe = cleanReply(text);
-        div.innerHTML = `<span class="${labelClass}">${labelText}:</span> ${marked.parse(safe)}`;
+        div.innerHTML = `<span class="${labelClass}">${labelText}:</span> ${renderMarkdownSafe(text)}`;
       } else {
         div.innerHTML = `<span class="${labelClass}">${labelText}:</span> ${escapeHtml(text)}`;
       }
@@ -172,10 +215,10 @@
         if (t) t.remove();
 
         if (r.ok && data && data.reply) {
-          const reply = cleanReply(data.reply);
+          const reply = data.reply || "";
           append('b', 'TutorBot', reply);
           chatHistory.push({ role: "user", content: message });
-          chatHistory.push({ role: "assistant", content: reply });
+          chatHistory.push({ role: "assistant", content: renderTextForMemory(reply) });
           saveHistory();
         } else {
           const msg = friendlyError(r.status, (data && (data.error || data.detail)) || raw);
@@ -192,12 +235,19 @@
       }
     }
 
+    // For memory, keep a plain-text (no tags) version:
+    function renderTextForMemory(text) {
+      const stripped = preClean(text);
+      const tmp = document.createElement("div");
+      tmp.innerHTML = marked.parse(stripped);
+      return tmp.textContent || tmp.innerText || "";
+    }
+
     sendBtn.addEventListener('click', send);
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
     resetBtn.addEventListener('click', resetHistoryViewOnly);
     clearBtn.addEventListener('click', clearSavedHistory);
 
-    // Optional: allow clearing by visiting ...#clear once
     if (location.hash === "#clear") {
       clearSavedHistory();
       history.replaceState(null, "", location.pathname);
