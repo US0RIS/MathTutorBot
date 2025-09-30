@@ -15,7 +15,7 @@
     #chat { min-height: 340px; max-height: 60vh; overflow:auto; line-height:1.6; }
     .msg { margin: 10px 0; }
     .u  { color: var(--accent); font-weight: 600; }
-    .b  { color: #059669; font-weight: 600; } /* bot label */
+    .b  { color: #059669; font-weight: 600; }
     .system { color: var(--muted); font-style: italic; }
     .row { display: flex; gap: 8px; margin-top: 12px; }
     input[type="text"] { flex: 1; padding: 12px 14px; border:1px solid #d1d5db; border-radius: 10px; font-size: 16px; outline: none; }
@@ -25,6 +25,7 @@
     .hint { color: var(--muted); font-size: 14px; margin-top: 8px; }
     .typing { color: var(--muted); font-style: italic; }
     .error { color: #b91c1c; }
+    .tiny { color: var(--muted); font-size: 12px; }
   </style>
 </head>
 <body>
@@ -44,40 +45,43 @@
         <button id="sendBtn" class="send">Send</button>
       </div>
       <div class="hint">The bot explains steps and encourages thinking — no final answers.</div>
+      <div id="debug" class="tiny"></div>
     </div>
   </div>
 
   <script>
     // 🔧 Set this to your Replit backend '/ask' URL:
-    const BACKEND_URL = "https://https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask";
+    const BACKEND_URL = "https://YOUR-REPLIT-URL/ask";
 
     const chat    = document.getElementById('chat');
     const input   = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
     const resetBtn= document.getElementById('resetBtn');
+    const debugEl = document.getElementById('debug');
 
-    // Keep short-term memory in the browser (and persist across refresh)
+    // Short-term memory (persists in this browser via localStorage)
     let chatHistory = JSON.parse(localStorage.getItem("tutor_history") || "[]");
 
-    // Re-render any saved messages
     function renderHistory() {
+      chat.innerHTML = `<div class="msg system">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer.</div>`;
       for (const m of chatHistory) {
         if (m.role === "user") append("u", "You", m.content);
         if (m.role === "assistant") append("b", "TutorBot", m.content);
       }
+      debugEl.textContent = `(context turns available: ${chatHistory.length})`;
     }
     renderHistory();
 
     function saveHistory() {
-      // cap to ~12 turns to keep payload small
-      const capped = chatHistory.slice(-12);
-      localStorage.setItem("tutor_history", JSON.stringify(capped));
+      chatHistory = chatHistory.slice(-12); // cap context
+      localStorage.setItem("tutor_history", JSON.stringify(chatHistory));
+      debugEl.textContent = `(context turns available: ${chatHistory.length})`;
     }
 
     function resetHistory() {
       chatHistory = [];
       localStorage.removeItem("tutor_history");
-      chat.innerHTML = `<div class="msg system">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer.</div>`;
+      renderHistory();
     }
 
     function append(labelClass, labelText, text, extraClass="") {
@@ -100,18 +104,11 @@
 
     function friendlyError(status, bodyText) {
       const t = (bodyText || "").toLowerCase();
-      if (status === 503 || t.includes("busy")) {
-        return "All free providers are busy right now. Please try again in a minute.";
-      }
-      if (status === 429 || t.includes("rate limit")) {
-        return "The free service is temporarily rate-limited. Try again in a few seconds.";
-      }
-      if (status === 404 && (t.includes("no endpoints") || t.includes("free model"))) {
+      if (status === 503 || t.includes("busy")) return "All free providers are busy right now. Please try again in a minute.";
+      if (status === 429 || t.includes("rate limit")) return "The free service is temporarily rate-limited. Try again in a few seconds.";
+      if (status === 404 && (t.includes("no endpoints") || t.includes("free model")))
         return "That free model isn’t available right now — trying other options.";
-      }
-      if (t.includes("not allowed by cors")) {
-        return "This page isn’t allowed to reach the tutor server (CORS). Tell the site owner.";
-      }
+      if (t.includes("not allowed by cors")) return "This page isn’t allowed to reach the tutor server (CORS). Tell the site owner.";
       return "Server error. Please try again soon.";
     }
 
@@ -119,10 +116,8 @@
       const message = input.value.trim();
       if (!message) return;
 
-      // Show + record user turn
+      // Show user turn (but do NOT push it to history yet)
       append('u', 'You', message);
-      chatHistory.push({ role: "user", content: message });
-      saveHistory();
 
       input.value = "";
       sendBtn.disabled = true;
@@ -130,13 +125,13 @@
       appendRaw(`<span id="${typingId}" class="typing">TutorBot is thinking…</span>`);
 
       try {
-        // Send message + prior turns
+        // Send existing history + current user message separately
         const r = await fetch(BACKEND_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message,
-            history: chatHistory.slice(0, -1) // previous turns only; backend adds current user
+            history: chatHistory   // previous turns only
           })
         });
 
@@ -149,8 +144,9 @@
         if (t) t.remove();
 
         if (r.ok && data && data.reply) {
-          // Show + record assistant turn (hide model)
           append('b', 'TutorBot', data.reply);
+          // Now append both turns into history in correct order
+          chatHistory.push({ role: "user", content: message });
           chatHistory.push({ role: "assistant", content: data.reply });
           saveHistory();
         } else {
