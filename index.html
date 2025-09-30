@@ -29,4 +29,20 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>8th Grade Math Helper 🤖</h1
+    <h1>8th Grade Math Helper 🤖</h1>
+    <div id="chat" class="chat"></div>
+
+    <div class="row">
+      <input id="userInput" type="text" placeholder="Ask a math question… (press Enter)" />
+      <button id="sendBtn">Send</button>
+    </div>
+    <p class="hint">The bot explains steps and won’t give the final answer directly.</p>
+  </div>
+
+  <script>
+    // 👇 Replace with YOUR exact Replit URL, keep the /ask
+    const BACKEND_URL = "https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask";
+
+    const chatBox   = document.getElementById('chat');
+    const userInput = document.getElementById('userInput');
+    const s
