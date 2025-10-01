@@ -4,19 +4,11 @@
   <meta charset="utf-8" />
   <title>8th Grade Math Tutor 🤖</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root{
-      --bg:#f7f8fc;
-      --panel:#ffffff;
-      --text:#0f172a;
-      --muted:#475569;
-      --brand:#111827;
-      --accent:#0ea5e9;
-      --border:#e5e7eb;
-      --error:#dc2626;
-      --ok:#059669;
+      --bg:#f7f8fc;--panel:#ffffff;--text:#0f172a;--muted:#475569;
+      --brand:#111827;--border:#e5e7eb;--error:#dc2626;--ok:#059669
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -25,29 +17,18 @@
     .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.04);padding:18px}
     .header{display:flex;align-items:center;gap:12px;justify-content:space-between}
     .controls{display:flex;gap:10px}
-    button{
-      cursor:pointer;border:0;background:#111827;color:#fff;padding:8px 14px;border-radius:10px;
-      font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)
-    }
+    button{cursor:pointer;border:0;background:#111827;color:#fff;padding:8px 14px;border-radius:10px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)}
     button.secondary{background:#e5e7eb;color:#111827}
     button:disabled{opacity:.6;cursor:not-allowed}
     .hint{color:var(--muted);font-size:14px;margin:8px 0 0}
-    .row{display:flex;gap:10px}
-    .row > *{flex:1}
-    input[type="text"],textarea{
-      width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font:inherit;background:#fff
-    }
+    .row{display:flex;gap:10px}.row>*{flex:1}
+    input[type="text"]{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font:inherit;background:#fff}
     .chat{min-height:260px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
-    .msg{margin:8px 0}
-    .msg b{color:var(--brand)}
-    .msg.error{color:var(--error)}
-    .msg.ok{color:var(--ok)}
+    .msg{margin:8px 0}.msg b{color:var(--brand)}.msg.error{color:var(--error)}.msg.ok{color:var(--ok)}
     .msg .bubble{display:inline-block;padding:8px 10px;border-radius:10px;background:#f8fafc}
     .msg.me .bubble{background:#eef6ff}
     .foot{display:flex;gap:10px;margin-top:12px}
     .note{font-size:12px;color:var(--muted);margin-top:6px}
-    .mode{font-variant:all-small-caps;font-weight:700;color:var(--muted)}
-    .lock{display:flex;gap:8px;align-items:center;margin-top:8px}
     .pill{font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:#fafafa;color:#334155}
   </style>
 </head>
@@ -61,19 +42,15 @@
       </div>
     </div>
 
-    <!-- Access code area -->
     <div class="card">
       <div class="row">
         <input id="codeInput" type="text" placeholder="Enter access code…" />
         <button id="unlockBtn">Unlock</button>
         <button id="lockBtn" class="secondary">Lock</button>
       </div>
-      <div class="lock">
-        <span id="modeBadge" class="pill">Steps-only mode. Enter code to unlock answers.</span>
-      </div>
+      <div class="hint"><span id="modeBadge" class="pill">Steps-only mode. Enter code to unlock answers.</span></div>
     </div>
 
-    <!-- Chat -->
     <div class="card" style="margin-top:16px">
       <div id="intro" class="hint">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer.</div>
       <div id="chat" class="chat"></div>
@@ -84,18 +61,14 @@
       </div>
       <div class="note">
         The bot explains steps and encourages thinking — no final answers unless unlocked.<br/>
-        <span class="pill" id="storageInfo">(stored turns: 0) • <span class="mode" id="modeText">Mode: steps</span></span>
+        <span class="pill" id="storageInfo">(stored turns: 0) • Mode: <span id="modeText">steps</span></span>
       </div>
     </div>
   </div>
 
 <script>
-/* ========= CONFIG (change this!) ========= */
-// Put your live Replit URL (while server is running) + /ask
-// e.g. "https://math-backend.us0ris.repl.co/ask" or "...replit.dev/ask"
-const BACKEND_URL = "https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask";
-
-// Access code for Answer mode (change to whatever you want)
+/* ========= CONFIG ========= */
+const BACKEND_URL = "https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask"; // <= your /ask URL
 const ACCESS_CODE = "auRPpLZi7t5FKRPVQjhUem1ET";
 
 /* ========= State ========= */
@@ -111,8 +84,8 @@ const elUnlock = document.getElementById("unlockBtn");
 const elLock = document.getElementById("lockBtn");
 const elStorageInfo = document.getElementById("storageInfo");
 
-let chatHistory = loadHistory();          // [{role:"user"|"assistant", content:"..."}]
-let mode = loadMode();                    // "steps" | "answers"
+let chatHistory = loadHistory();       // [{role:"user"|"assistant", content:"markdown"}]
+let mode = loadMode();                 // "steps" | "answers"
 renderHistory();
 updateModeUI();
 
@@ -123,57 +96,41 @@ function clearHistory(){ chatHistory = []; saveHistory(); elChat.innerHTML = "";
 
 function saveMode(m){ mode = m; localStorage.setItem("mt_mode", mode); updateModeUI(); }
 function loadMode(){ return localStorage.getItem("mt_mode") || "steps"; }
-
 function updateModeUI(){
-  elModeText.textContent = "Mode: " + mode;
+  elModeText.textContent = mode;
   elBadge.textContent = (mode === "answers")
     ? "Answer mode unlocked for this tab. I can include final numeric answers now."
     : "Steps-only mode. Enter code to unlock answers.";
 }
 function updateStorageInfo(){
-  elStorageInfo.innerHTML = `(stored turns: ${chatHistory.length}) • <span class="mode" id="modeText">Mode: ${mode}</span>`;
+  elStorageInfo.innerHTML = `(stored turns: ${chatHistory.length}) • Mode: <span id="modeText">${mode}</span>`;
 }
-
+function cleanForDisplay(s){
+  return s.replace(/\[\s*OUT\s*]/gi,"").replace(/~~([^~]+)~~/g,"$1");
+}
 function append(role, who, text, extraClass=""){
   const id = Math.random().toString(36).slice(2,9);
   const div = document.createElement("div");
   div.className = `msg ${role==="me"?"me":""} ${extraClass}`;
-  const html = marked.parse(preClean(text));
+  const html = marked.parse(cleanForDisplay(text));
   div.innerHTML = `<b>${who}:</b> <div class="bubble" id="${id}">${html}</div>`;
   elChat.appendChild(div);
   elChat.scrollTop = elChat.scrollHeight;
   return id;
 }
-
-function preClean(s){
-  // remove any stray [OUT] markers and convert ~~strike~~ to plain
-  return s.replace(/\[\s*OUT\s*]/gi,"").replace(/~~([^~]+)~~/g,"$1");
-}
-
-function smallCleanText(markdownHTML){
-  // strip HTML to store plain text for the model history
-  const tmp = document.createElement("div");
-  tmp.innerHTML = markdownHTML;
-  return (tmp.textContent || tmp.innerText || "").trim();
-}
-
-/* ========= Render existing history ========= */
 function renderHistory(){
   elChat.innerHTML = "";
   for(const m of chatHistory){
-    if(m.role === "user"){
-      append("me","You", m.content);
-    }else{
-      const html = marked.parse(preClean(m.content));
-      const id = append("b", "TutorBot", m.content);
-      // ensure stored assistant text stays as raw markdown, not HTML
-      document.getElementById(id).innerHTML = html;
+    if(m.role === "user") append("me","You", m.content);
+    else {
+      const id = append("b","TutorBot", m.content);
+      document.getElementById(id).innerHTML = marked.parse(cleanForDisplay(m.content));
     }
   }
   updateStorageInfo();
 }
 
-/* ========= Send flow ========= */
+/* ========= Send ========= */
 async function send(){
   const message = elInput.value.trim();
   if(!message) return;
@@ -181,19 +138,13 @@ async function send(){
   append("me","You", message);
   elInput.value = "";
 
-  // keep a short context (last ~12 turns total)
-  const shortHistory = chatHistory.slice(-12);
+  const shortHistory = chatHistory.slice(-24); // bigger window
 
-  // send
   try{
     const r = await fetch(BACKEND_URL, {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        message,
-        history: shortHistory,
-        mode
-      })
+      body: JSON.stringify({ message, history: shortHistory, mode })
     });
 
     if(!r.ok){
@@ -208,15 +159,11 @@ async function send(){
 
     if(reply && reply !== "."){
       const id = append("b","TutorBot", reply);
-      const cleanMem = smallCleanText(marked.parse(preClean(reply)));
-
-      // Save into memory
+      // store RAW markdown reply (better for context)
       chatHistory.push({ role:"user", content: message });
-      chatHistory.push({ role:"assistant", content: cleanMem });
+      chatHistory.push({ role:"assistant", content: reply });
       saveHistory();
-
-      // ensure UI shows markdown-rendered reply
-      document.getElementById(id).innerHTML = marked.parse(preClean(reply));
+      document.getElementById(id).innerHTML = marked.parse(cleanForDisplay(reply));
     }else{
       append("b","TutorBot","⚠️ The tutor bot didn’t give a proper response. Please try again.","error");
     }
@@ -234,9 +181,7 @@ elReset.onclick = () => {
   clearHistory();
   append("b","TutorBot","Memory cleared for this tab. Ask me a question!");
 };
-elClear.onclick = () => {
-  clearHistory();
-};
+elClear.onclick = clearHistory;
 
 elUnlock.onclick = () => {
   const code = elCode.value.trim();
