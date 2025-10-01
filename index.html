@@ -60,7 +60,7 @@
         <button id="sendBtn">Send</button>
       </div>
       <div class="note">
-        The bot explains steps and encourages thinking — no final answers unless unlocked.<br/>
+        The bot explains steps and encourages thinking — no final answers.<br/>
         <span class="pill" id="storageInfo">(stored turns: 0) • Mode: <span id="modeText">steps</span></span>
       </div>
     </div>
@@ -187,9 +187,9 @@ elUnlock.onclick = () => {
   const code = elCode.value.trim();
   if(code && code === ACCESS_CODE){
     saveMode("answers");
-    append("b","TutorBot","Answer mode unlocked for this tab. I can include final numeric answers now.","ok");
+    append("b","TutorBot","Answer mode unlocked for this tab. I can include final numeric answers now and help with other subjects.","ok");
   }else{
-    append("b","TutorBot","❌ Incorrect code. Still in steps-only mode.","error");
+    append("b","TutorBot","❌ Incorrect code.","error");
   }
 };
 elLock.onclick = () => {
