@@ -4,383 +4,253 @@
   <meta charset="utf-8" />
   <title>8th Grade Math Tutor 🤖</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light">
-  <style>
-    /* ===== Base / Layout ===== */
-    :root {
-      --bg: #f5f7fb;
-      --card: #ffffff;
-      --ink: #0f172a;
-      --muted: #64748b;
-      --line: #e2e8f0;
-      --accent: #2563eb;
-      --bot: #059669;
-      --danger: #b91c1c;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color: var(--ink);
-      background: var(--bg);
-    }
-    .wrap {
-      max-width: 900px;
-      margin: 28px auto;
-      padding: 0 16px;
-    }
-    h1 {
-      font-size: clamp(24px, 4vw, 32px);
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-      gap: 10px;
-    }
-    .btns { display: flex; gap: 8px; }
-    .btn {
-      appearance: none;
-      border: 1px solid var(--line);
-      background: #fff;
-      color: var(--ink);
-      padding: 8px 12px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    .btn:active { transform: translateY(1px); }
-
-    /* ===== Gate ===== */
-    .gate {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px;
-      margin-bottom: 14px;
-    }
-    .gate .row { display: flex; gap: 8px; margin-top: 8px; }
-    .gate input {
-      flex: 1; padding: 10px 12px; border: 1px solid var(--line);
-      border-radius: 10px; font-size: 16px; outline: none;
-    }
-    .note { color: var(--muted); font-size: 14px; }
-
-    /* ===== Card / Chat ===== */
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 16px;
-    }
-    #chat {
-      min-height: 320px;
-      max-height: 60vh;
-      overflow: auto;
-      line-height: 1.6;
-      padding-right: 4px;
-    }
-    .msg { margin: 10px 0; }
-    .u { color: var(--accent); font-weight: 600; }
-    .b { color: var(--bot); font-weight: 600; }
-    .system { color: var(--muted); font-style: italic; }
-    .typing { color: var(--muted); font-style: italic; }
-    .error { color: var(--danger); }
-    .row { display: flex; gap: 8px; margin-top: 12px; }
-    input[type="text"] {
-      flex: 1; padding: 12px 14px; border: 1px solid var(--line);
-      border-radius: 10px; font-size: 16px; outline: none; background: #fff;
-    }
-    input[type="text"]:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-    }
-    .send {
-      padding: 12px 16px; border: none; border-radius: 10px;
-      background: var(--ink); color: #fff; font-size: 16px; cursor: pointer;
-    }
-    .send[disabled] { opacity: .7; cursor: not-allowed; }
-    .hint { color: var(--muted); font-size: 14px; margin-top: 6px; }
-    .tiny { color: var(--muted); font-size: 12px; margin-top: 6px; }
-
-    /* Stop accidental strikethrough from model text */
-    del, s, strike { text-decoration: none !important; }
-    [style*="line-through"] { text-decoration: none !important; }
-  </style>
-
-  <!-- Markdown renderer -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root{
+      --bg:#f7f8fc;
+      --panel:#ffffff;
+      --text:#0f172a;
+      --muted:#475569;
+      --brand:#111827;
+      --accent:#0ea5e9;
+      --border:#e5e7eb;
+      --error:#dc2626;
+      --ok:#059669;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .wrap{max-width:860px;margin:24px auto;padding:0 16px}
+    h1{font-size:clamp(22px,4vw,34px);margin:8px 0 18px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 6px rgba(0,0,0,.04);padding:18px}
+    .header{display:flex;align-items:center;gap:12px;justify-content:space-between}
+    .controls{display:flex;gap:10px}
+    button{
+      cursor:pointer;border:0;background:#111827;color:#fff;padding:8px 14px;border-radius:10px;
+      font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)
+    }
+    button.secondary{background:#e5e7eb;color:#111827}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .hint{color:var(--muted);font-size:14px;margin:8px 0 0}
+    .row{display:flex;gap:10px}
+    .row > *{flex:1}
+    input[type="text"],textarea{
+      width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font:inherit;background:#fff
+    }
+    .chat{min-height:260px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+    .msg{margin:8px 0}
+    .msg b{color:var(--brand)}
+    .msg.error{color:var(--error)}
+    .msg.ok{color:var(--ok)}
+    .msg .bubble{display:inline-block;padding:8px 10px;border-radius:10px;background:#f8fafc}
+    .msg.me .bubble{background:#eef6ff}
+    .foot{display:flex;gap:10px;margin-top:12px}
+    .note{font-size:12px;color:var(--muted);margin-top:6px}
+    .mode{font-variant:all-small-caps;font-weight:700;color:var(--muted)}
+    .lock{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .pill{font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:#fafafa;color:#334155}
+  </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="bar">
+    <div class="header">
       <h1>8th Grade Math Tutor 🤖</h1>
-      <div class="btns">
-        <button class="btn" id="resetBtn">Reset</button>
-        <button class="btn" id="clearBtn">Clear history</button>
+      <div class="controls">
+        <button id="resetBtn" class="secondary">Reset</button>
+        <button id="clearBtn" class="secondary">Clear history</button>
       </div>
     </div>
 
-    <!-- Unlock Gate -->
-    <div class="gate" id="gate">
-      <strong>🔒 Restricted area</strong>
-      <div class="note">Enter an access code to unlock <em>Answer mode</em> (gives final numeric answers). Default is steps-only.</div>
-      <div class="row">
-        <input id="codeInput" type="password" placeholder="Enter access code…" autocomplete="off" />
-        <button class="btn" id="unlockBtn">Unlock</button>
-        <button class="btn" id="lockBtn">Lock</button>
-      </div>
-      <div id="gateMsg" class="note"></div>
-    </div>
-
+    <!-- Access code area -->
     <div class="card">
-      <div id="chat">
-        <div class="msg system">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer unless unlocked.</div>
-      </div>
-
       <div class="row">
-        <input id="userInput" type="text" placeholder="Ask a math question… (press Enter)" autocomplete="off" />
-        <button id="sendBtn" class="send">Send</button>
+        <input id="codeInput" type="text" placeholder="Enter access code…" />
+        <button id="unlockBtn">Unlock</button>
+        <button id="lockBtn" class="secondary">Lock</button>
       </div>
-      <div class="hint">The bot explains steps and encourages thinking — no final answers unless unlocked.</div>
-      <div id="debug" class="tiny"></div>
+      <div class="lock">
+        <span id="modeBadge" class="pill">Steps-only mode. Enter code to unlock answers.</span>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="card" style="margin-top:16px">
+      <div id="intro" class="hint">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer.</div>
+      <div id="chat" class="chat"></div>
+
+      <div class="foot">
+        <input id="input" type="text" placeholder="Ask a math question… (press Enter)" />
+        <button id="sendBtn">Send</button>
+      </div>
+      <div class="note">
+        The bot explains steps and encourages thinking — no final answers unless unlocked.<br/>
+        <span class="pill" id="storageInfo">(stored turns: 0) • <span class="mode" id="modeText">Mode: steps</span></span>
+      </div>
     </div>
   </div>
 
-  <script>
-    /* ===========================
-       CONFIG — EDIT THIS!
-       =========================== */
-    // Your Replit backend URL (must end with /ask)
-    const BACKEND_URL = "https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask"; // <-- CHANGE THIS
-    // Secret code to enable Answer mode
-    const SECRET_CODE = "auRPpLZi7t5FKRPVQjhUem1ET"; // <-- optional change
+<script>
+/* ========= CONFIG (change this!) ========= */
+// Put your live Replit URL (while server is running) + /ask
+// e.g. "https://math-backend.us0ris.repl.co/ask" or "...replit.dev/ask"
+const BACKEND_URL = "https://e1daa5d0-10d2-48ff-9214-1495a9b30b37-00-3fsa6b19pb26o.riker.replit.dev/ask";
 
-    /* ==============
-       State & UI
-       ============== */
-    const CHAT_KEY   = "tutor_history_v6";
-    const UNLOCK_KEY = "tutor_unlock_v1";
+// Access code for Answer mode (change to whatever you want)
+const ACCESS_CODE = "auRPpLZi7t5FKRPVQjhUem1ET";
 
-    let chatHistory = JSON.parse(localStorage.getItem(CHAT_KEY) || "[]");
-    let unlocked = sessionStorage.getItem(UNLOCK_KEY) === "true";
+/* ========= State ========= */
+const elChat = document.getElementById("chat");
+const elInput = document.getElementById("input");
+const elSend = document.getElementById("sendBtn");
+const elReset = document.getElementById("resetBtn");
+const elClear = document.getElementById("clearBtn");
+const elModeText = document.getElementById("modeText");
+const elBadge = document.getElementById("modeBadge");
+const elCode = document.getElementById("codeInput");
+const elUnlock = document.getElementById("unlockBtn");
+const elLock = document.getElementById("lockBtn");
+const elStorageInfo = document.getElementById("storageInfo");
 
-    const chat    = document.getElementById("chat");
-    const input   = document.getElementById("userInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const resetBtn= document.getElementById("resetBtn");
-    const clearBtn= document.getElementById("clearBtn");
-    const debugEl = document.getElementById("debug");
+let chatHistory = loadHistory();          // [{role:"user"|"assistant", content:"..."}]
+let mode = loadMode();                    // "steps" | "answers"
+renderHistory();
+updateModeUI();
 
-    const codeInput = document.getElementById("codeInput");
-    const unlockBtn = document.getElementById("unlockBtn");
-    const lockBtn   = document.getElementById("lockBtn");
-    const gateMsg   = document.getElementById("gateMsg");
+/* ========= Helpers ========= */
+function saveHistory(){ localStorage.setItem("mt_history", JSON.stringify(chatHistory)); updateStorageInfo(); }
+function loadHistory(){ try{ return JSON.parse(localStorage.getItem("mt_history")) || []; } catch{ return []; } }
+function clearHistory(){ chatHistory = []; saveHistory(); elChat.innerHTML = ""; updateStorageInfo(); }
 
-    function refreshGateUI() {
-      gateMsg.textContent = unlocked
-        ? "✅ Answer mode is unlocked for this tab."
-        : "🔒 Steps-only mode. Enter code to unlock answers.";
+function saveMode(m){ mode = m; localStorage.setItem("mt_mode", mode); updateModeUI(); }
+function loadMode(){ return localStorage.getItem("mt_mode") || "steps"; }
+
+function updateModeUI(){
+  elModeText.textContent = "Mode: " + mode;
+  elBadge.textContent = (mode === "answers")
+    ? "Answer mode unlocked for this tab. I can include final numeric answers now."
+    : "Steps-only mode. Enter code to unlock answers.";
+}
+function updateStorageInfo(){
+  elStorageInfo.innerHTML = `(stored turns: ${chatHistory.length}) • <span class="mode" id="modeText">Mode: ${mode}</span>`;
+}
+
+function append(role, who, text, extraClass=""){
+  const id = Math.random().toString(36).slice(2,9);
+  const div = document.createElement("div");
+  div.className = `msg ${role==="me"?"me":""} ${extraClass}`;
+  const html = marked.parse(preClean(text));
+  div.innerHTML = `<b>${who}:</b> <div class="bubble" id="${id}">${html}</div>`;
+  elChat.appendChild(div);
+  elChat.scrollTop = elChat.scrollHeight;
+  return id;
+}
+
+function preClean(s){
+  // remove any stray [OUT] markers and convert ~~strike~~ to plain
+  return s.replace(/\[\s*OUT\s*]/gi,"").replace(/~~([^~]+)~~/g,"$1");
+}
+
+function smallCleanText(markdownHTML){
+  // strip HTML to store plain text for the model history
+  const tmp = document.createElement("div");
+  tmp.innerHTML = markdownHTML;
+  return (tmp.textContent || tmp.innerText || "").trim();
+}
+
+/* ========= Render existing history ========= */
+function renderHistory(){
+  elChat.innerHTML = "";
+  for(const m of chatHistory){
+    if(m.role === "user"){
+      append("me","You", m.content);
+    }else{
+      const html = marked.parse(preClean(m.content));
+      const id = append("b", "TutorBot", m.content);
+      // ensure stored assistant text stays as raw markdown, not HTML
+      document.getElementById(id).innerHTML = html;
     }
-    refreshGateUI();
+  }
+  updateStorageInfo();
+}
 
-    unlockBtn.onclick = () => {
-      const entered = (codeInput.value || "").trim();
-      if (entered === SECRET_CODE) {
-        unlocked = true;
-        sessionStorage.setItem(UNLOCK_KEY, "true");
-        refreshGateUI();
-        append("b", "TutorBot", "Answer mode unlocked for this tab. I can include final numeric answers now.");
-      } else {
-        gateMsg.textContent = "❌ Wrong code.";
-      }
-      codeInput.value = "";
-    };
-    lockBtn.onclick = () => {
-      unlocked = false;
-      sessionStorage.removeItem(UNLOCK_KEY);
-      refreshGateUI();
-      append("b", "TutorBot", "Locked back to steps-only mode. I won’t give final answers.");
-    };
+/* ========= Send flow ========= */
+async function send(){
+  const message = elInput.value.trim();
+  if(!message) return;
 
-    function renderHistory() {
-      chat.innerHTML = `<div class="msg system">👋 Ask a math question and I’ll guide you through the steps. I won’t give the final numeric answer unless unlocked.</div>`;
-      for (const m of chatHistory) {
-        if (m.role === "user") append("u", "You", m.content);
-        if (m.role === "assistant") append("b", "TutorBot", m.content);
-      }
-      updateDebug();
-    }
-    renderHistory();
+  append("me","You", message);
+  elInput.value = "";
 
-    function saveHistory() {
-      chatHistory = chatHistory.slice(-12); // keep last 12 turns for context
-      localStorage.setItem(CHAT_KEY, JSON.stringify(chatHistory));
-      updateDebug();
-    }
-    function updateDebug() {
-      debugEl.textContent = `(stored turns: ${chatHistory.length}) • Mode: ${unlocked ? "answers" : "steps"}`;
-    }
-    resetBtn.addEventListener("click", renderHistory);
-    clearBtn.addEventListener("click", () => {
-      chatHistory = [];
-      localStorage.removeItem(CHAT_KEY);
-      renderHistory();
+  // keep a short context (last ~12 turns total)
+  const shortHistory = chatHistory.slice(-12);
+
+  // send
+  try{
+    const r = await fetch(BACKEND_URL, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        message,
+        history: shortHistory,
+        mode
+      })
     });
 
-    /* ===========================
-       Rendering helpers
-       =========================== */
-    function escapeHtml(s) {
-      return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-    }
-    function preClean(text) {
-      if (!text) return "";
-      let t = text.normalize("NFKC").replace(/[\u200B-\u200D\uFEFF]/g, "");
-      t = t
-        .replace(/\[\s*OUT\s*]/gi, "")
-        .replace(/&#91;\s*OUT\s*&#93;/gi, "")
-        .replace(/\[\s*O\s*U\s*T\s*]/gi, "")
-        .replace(/~~([^~]+)~~/g, "$1");
-      return t.trim();
-    }
-    function renderMarkdownSafe(text) {
-      const html = marked.parse(preClean(text));
-      const tmp = document.createElement("div");
-      tmp.innerHTML = html;
-
-      // Strip any strikethrough & lingering [OUT] in text nodes
-      const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-      const unwrap = [];
-      while (walker.nextNode()) {
-        const node = walker.currentNode;
-        if (node.nodeType === Node.TEXT_NODE) {
-          node.nodeValue = (node.nodeValue || "")
-            .replace(/\[\s*OUT\s*]/gi, "")
-            .replace(/&#91;\s*OUT\s*&#93;/gi, "");
-        } else {
-          const el = node;
-          const tag = el.tagName.toLowerCase();
-          if (tag === "s" || tag === "strike" || tag === "del") unwrap.push(el);
-          const s1 = (el.style && el.style.textDecoration || "").toLowerCase();
-          if (s1.includes("line-through")) el.style.textDecoration = "none";
-          const sAttr = (el.getAttribute("style") || "").toLowerCase();
-          if (sAttr.includes("line-through")) {
-            el.setAttribute("style", sAttr.replace(/text-decoration\s*:\s*line-through;?/g, "text-decoration:none;"));
-          }
-        }
-      }
-      for (const el of unwrap) {
-        while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
-        el.parentNode.removeChild(el);
-      }
-      return tmp.innerHTML;
-    }
-    function append(labelClass, labelText, text, extraClass = "") {
-      const div = document.createElement("div");
-      div.className = `msg ${extraClass}`;
-      if (labelText === "TutorBot") {
-        div.innerHTML = `<span class="${labelClass}">${labelText}:</span> ${renderMarkdownSafe(text)}`;
-      } else {
-        div.innerHTML = `<span class="${labelClass}">${labelText}:</span> ${escapeHtml(text)}`;
-      }
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    }
-    function appendRaw(html, extraClass="") {
-      const div = document.createElement("div");
-      div.className = `msg ${extraClass}`;
-      div.innerHTML = html;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
+    if(!r.ok){
+      const t = await r.text();
+      append("b","TutorBot", `⚠️ Server error (${r.status}).`, "error");
+      console.error("Server error:", r.status, t);
+      return;
     }
 
-    function friendlyError(status, bodyText) {
-      const t = (bodyText || "").toLowerCase();
-      if (status === 503 || t.includes("busy")) return "All free providers are busy right now. Try again in a minute.";
-      if (status === 429 || t.includes("rate limit")) return "The free service is temporarily rate-limited. Try again shortly.";
-      if (status === 404 && (t.includes("no endpoints") || t.includes("free model")))
-        return "That free model isn’t available right now — trying other options.";
-      if (t.includes("not allowed by cors")) return "This page isn’t allowed to reach the tutor server (CORS). Tell the site owner.";
-      return "Server error. Please try again soon.";
+    const data = await r.json();
+    const reply = (data.reply || "").trim();
+
+    if(reply && reply !== "."){
+      const id = append("b","TutorBot", reply);
+      const cleanMem = smallCleanText(marked.parse(preClean(reply)));
+
+      // Save into memory
+      chatHistory.push({ role:"user", content: message });
+      chatHistory.push({ role:"assistant", content: cleanMem });
+      saveHistory();
+
+      // ensure UI shows markdown-rendered reply
+      document.getElementById(id).innerHTML = marked.parse(preClean(reply));
+    }else{
+      append("b","TutorBot","⚠️ The tutor bot didn’t give a proper response. Please try again.","error");
     }
+  }catch(err){
+    console.error(err);
+    append("b","TutorBot","⚠️ Couldn’t reach the tutor server. Check your connection and try again.","error");
+  }
+}
 
-    /* ===========================
-       Send logic
-       =========================== */
-    async function send() {
-      const message = input.value.trim();
-      if (!message) return;
+/* ========= Events ========= */
+elSend.onclick = send;
+elInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter") send(); });
 
-      append("u", "You", message);
-      input.value = "";
-      sendBtn.disabled = true;
+elReset.onclick = () => {
+  clearHistory();
+  append("b","TutorBot","Memory cleared for this tab. Ask me a question!");
+};
+elClear.onclick = () => {
+  clearHistory();
+};
 
-      const typingId = `typing-${Date.now()}`;
-      appendRaw(`<span id="${typingId}" class="typing">TutorBot is thinking…</span>`);
-
-      try {
-        const r = await fetch(BACKEND_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message,
-            history: chatHistory,
-            mode: unlocked ? "answers" : "steps"
-          })
-        });
-
-        const raw = await r.text();
-        let data = null;
-        try { data = JSON.parse(raw); } catch {}
-
-        const t = document.getElementById(typingId);
-        if (t) t.remove();
-
-        if (r.ok && data && data.reply) {
-          const reply = data.reply || "";
-
-          // Render markdown safely
-          append("b", "TutorBot", reply);
-
-          // Store plain text for memory
-          const tmp = document.createElement("div");
-          tmp.innerHTML = marked.parse(preClean(reply));
-          const memText = tmp.textContent || tmp.innerText || "";
-
-          chatHistory.push({ role: "user", content: message });
-          chatHistory.push({ role: "assistant", content: memText });
-          saveHistory();
-        } else {
-          const msg = friendlyError(r.status, (data && (data.error || data.detail)) || raw);
-          append("b", "TutorBot", `⚠️ ${msg}`, "error");
-        }
-      } catch (err) {
-        const t = document.getElementById(typingId);
-        if (t) t.remove();
-        append("b", "TutorBot", "⚠️ Couldn’t reach the tutor server. Check your connection and try again.", "error");
-        console.error(err);
-      } finally {
-        sendBtn.disabled = false;
-        input.focus();
-      }
-    }
-
-    sendBtn.addEventListener("click", send);
-    input.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
-
-    // Optional one-time clear via #clear hash
-    if (location.hash === "#clear") {
-      chatHistory = [];
-      localStorage.removeItem(CHAT_KEY);
-      renderHistory();
-      history.replaceState(null, "", location.pathname);
-    }
-  </script>
+elUnlock.onclick = () => {
+  const code = elCode.value.trim();
+  if(code && code === ACCESS_CODE){
+    saveMode("answers");
+    append("b","TutorBot","Answer mode unlocked for this tab. I can include final numeric answers now.","ok");
+  }else{
+    append("b","TutorBot","❌ Incorrect code. Still in steps-only mode.","error");
+  }
+};
+elLock.onclick = () => {
+  saveMode("steps");
+  append("b","TutorBot","Answer mode locked. I will not reveal the final numeric answer.","ok");
+};
+</script>
 </body>
 </html>
